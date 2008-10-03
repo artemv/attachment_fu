@@ -11,7 +11,7 @@ Now you can pass custom error formatter method names to validates_as_attachment:
 
     validates_as_attachment :error_formatters => {:content_type => :add_content_type_error, :size => :add_size_error}
 
-Example of error formatter callback method:
+Here's an example of error formatter. It uses Globalize to translate the message template:
 
     def add_content_type_error(options)
       return if !filename #content type doesn't matter if there's no file
