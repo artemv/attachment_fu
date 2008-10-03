@@ -4,6 +4,33 @@ attachment-fu
 attachment_fu is a plugin by Rick Olson (aka technoweenie <http://techno-weenie.net>) and is the successor to acts_as_attachment.  To get a basic run-through of its capabilities, check out Mike Clark's tutorial <http://clarkware.com/cgi/blosxom/2007/02/24#FileUploadFu>.
 
 
+This fork
+=============
+This fork provides validation errors customization means.
+Now you can pass custom error formatter method names to validates_as_attachment:
+
+    validates_as_attachment :error_formatters => {:content_type => :add_content_type_error, :size => :add_size_error}
+
+Example of error formatter callback method:
+
+    def add_content_type_error(options)
+      return if !filename #content type doesn't matter if there's no file
+      msg = sprintf(("Your file's format (%s) is denied. Allowed are only " +
+          "image formats.").translate, options[:value])
+
+      #don't try to translate string expanded with parameters
+      msg.translated = true
+
+      #for it to not mix with attribute name (and break .translated state)
+      errors.add_to_base(msg)
+    end
+
+Also it applies fixes against 'Size is not included in the list error' issue 
+(which is often reproduced on Windows) suggested at 
+http://railsforum.com/viewtopic.php?pid=26427#p26427.
+
+The fork is contributed by Texuna Technologies.
+
 attachment_fu functionality
 ===========================
 

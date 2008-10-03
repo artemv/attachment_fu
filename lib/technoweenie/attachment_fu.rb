@@ -150,8 +150,35 @@ module Technoweenie # :nodoc:
       delegate :content_types, :to => Technoweenie::AttachmentFu
 
       # Performs common validations for attachment models.
-      def validates_as_attachment
-        validates_presence_of :size, :content_type, :filename
+      # Options:
+      # *  <tt>:error_formatters</tt> - specify custom error formatters per attachment's attributes
+      #
+      # Example:
+      #     validates_as_attachment :error_formatters => {:content_type => 
+      #         :add_content_type_error, :size => :add_size_error}
+      # This tells attachment_fu to call Model#add_content_type_error and 
+      #   Model#add_size_error to add valuidation errors for respective 
+      #   attributes if they are not valid. Context is passed to callback as a hash with keys:
+      #   :attrib, :value, :allowed_values
+      #   Here's an example of error formatter. It uses Globalize to translate the message template.
+      #    def add_content_type_error(options)
+      #      return if !filename #content type doesn't matter if there's no file
+      #      msg = sprintf(("Your file's format (%s) is denied. Allowed are only " +
+      #          "image formats.").translate, options[:value])
+      #
+      #      #don't try to translate string expanded with parameters
+      #      msg.translated = true
+      #
+      #      #for it to not mix with attribute name (and break .translated state)
+      #      errors.add_to_base(msg)
+      #    end
+      
+      def validates_as_attachment(options = {})
+        options[:error_formatters] ||= {}
+        attachment_options[:validation_error_formatters] = options[:error_formatters]
+        
+        validates_presence_of :filename
+        validates_presence_of :size, :content_type, :if => lambda {|a| a.filename}
         validate              :attachment_attributes_valid?
       end
 
@@ -329,6 +356,10 @@ module Technoweenie # :nodoc:
           self.filename =  file_data['filename']
           file_data = file_data['tempfile']
         end
+        
+        #anti-zero-size solution from http://railsforum.com/viewtopic.php?pid=26427#p26427
+        self.size = file_data.size 
+        
         if file_data.is_a?(StringIO)
           file_data.rewind
           self.temp_data = file_data.read
@@ -413,14 +444,27 @@ module Technoweenie # :nodoc:
 
         # before_validation callback.
         def set_size_from_temp_path
-          self.size = File.size(temp_path) if save_attachment?
+          self.size = File.size(temp_path) if save_attachment? && (self.size == 0 || self.size.nil?)
         end
 
         # validates the size and content_type attributes according to the current model's options
         def attachment_attributes_valid?
-          [:size, :content_type].each do |attr_name|
-            enum = attachment_options[attr_name]
-            errors.add attr_name, ActiveRecord::Errors.default_error_messages[:inclusion] unless enum.nil? || enum.include?(send(attr_name))
+          [:content_type, :size].each do |attrib|
+            allowed_values = attachment_options[attrib]
+            attr_value = send(attrib)
+            if allowed_values && !allowed_values.include?(attr_value)
+              if allowed_values && !allowed_values.include?(send(attrib))
+                custom_formatter = 
+                  attachment_options[:validation_error_formatters][attrib]              
+                if custom_formatter
+                  send(custom_formatter, {:attrib => attrib, 
+                      :value => attr_value, :allowed_values => allowed_values})
+                else
+                  errors.add attrib, 
+                    ActiveRecord::Errors.default_error_messages[:inclusion] 
+                end
+              end
+            end              
           end
         end
 
