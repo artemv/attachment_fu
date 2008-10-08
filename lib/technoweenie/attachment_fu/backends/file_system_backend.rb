@@ -35,7 +35,16 @@ module Technoweenie # :nodoc:
         # to turn this off set :partition => false
         def partitioned_path(*args)
           default_path = ("%08d" % attachment_path_id).scan(/..../) + args
-          return default_path if !respond_to?(:attachment_options) 
+          if !respond_to?(:attachment_options)
+            if respond_to?(:parent) #for thumbnails
+              if parent.respond_to?(:attachment_options) #could this be not a thumbnail?
+                attachment_options = parent.attachment_options
+              end
+            end
+            return default_path if !attachment_options
+          else 
+            attachment_options = self.attachment_options
+          end
           return args if attachment_options[:partition] == false 
           if attachment_options[:partition].is_a? Proc
             result = attachment_options[:partition].call(self)
