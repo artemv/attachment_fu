@@ -233,8 +233,7 @@ Attachment model object is passed to lambda. In this example we have Issue
 model having many Attachments via polymorphic association, and we want 
 attachment files pathes to be like 'files/issues/67/my_file.doc', where 67 is 
 attachment's issue id. The lambda can also return array of strings, then 
-['a', 'b'] will become path 'files/issues/a/b' in this case. This lambda fits 
-if you use thumbnails; if you didn't have 'thumbnail' field in your Attachment 
-model it would be just lambda {|a| a.document_id}.
+['a', 'b'] will become path 'files/issues/a/b' in this case. This lambda will 
+fit if you use thumbnails; if you don't it will be just lambda {|a| a.document_id}.
 
 Note that partitioning is relevant only to :file_system storage.
